@@ -13,7 +13,7 @@ Hooks.on("ready", () => {
     dropShadowBlur: 4
   });
   distanceLabel.visible = false;
-  canvas.interface.addChild(distanceLabel);
+  canvas.tokens.addChild(distanceLabel);
 
   // Store current hovered token
   let currentHovered = null;
