@@ -12,5 +12,6 @@
   "systems": [],
   "dependencies": [],
   "manifest": "https://dominemesis.github.io/token-distance/module.json",
-  "download": "https://dominemesis.github.io/token-distance/"
+  "download": "https://github.com/dominemesis/token-distance/archive/refs/heads/main.zip"
+
 }
