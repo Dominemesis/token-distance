@@ -1,9 +1,7 @@
 let distanceLabel;
 
 Hooks.on("ready", () => {
-  let lastHovered = null;
-
-  // Create a PIXI Text label once, reused across hovers
+  // Create a PIXI Text label once
   distanceLabel = new PIXI.Text("", {
     fontFamily: "Arial",
     fontSize: 16,
@@ -14,37 +12,49 @@ Hooks.on("ready", () => {
   distanceLabel.visible = false;
   canvas.interface.addChild(distanceLabel);
 
-  canvas.stage.on("mouseover", event => {
-    const hovered = event.target?.document;
-    if (!hovered || hovered.documentName !== "Token") return;
+  // Store current hovered token
+  let currentHovered = null;
 
+  // Watch for hover in/out events
+  Hooks.on("hoverToken", (token, hovered) => {
     const selected = canvas.tokens.controlled[0];
-    const hoveredToken = hovered.object;
+    if (!hovered || !selected || token === selected) {
+      distanceLabel.visible = false;
+      currentHovered = null;
+      return;
+    }
 
-    if (!selected || hoveredToken === selected) return;
-
-    const dist = canvas.grid.measureDistance(selected.center, hoveredToken.center);
-    distanceLabel.text = `${dist.toFixed(1)} ft`;
-
-    // Position above the hovered token
-    const center = hoveredToken.center;
-    distanceLabel.x = center.x - distanceLabel.width / 2;
-    distanceLabel.y = center.y - hoveredToken.h / 2 - 40;
-    distanceLabel.visible = true;
-
-    lastHovered = hoveredToken;
+    currentHovered = token;
+    updateDistanceLabel();
   });
 
-  canvas.stage.on("mouseout", () => {
-    distanceLabel.visible = false;
-    lastHovered = null;
-  });
-
+  // If a token is deselected, hide the label
   Hooks.on("controlToken", () => {
-    // Hide label if no token is selected anymore
     if (canvas.tokens.controlled.length === 0) {
       distanceLabel.visible = false;
-      lastHovered = null;
+      currentHovered = null;
+    } else {
+      updateDistanceLabel();
     }
   });
-});
+
+  // Update label position on each frame
+  Hooks.on("canvasPan", updateDistanceLabel);
+  canvas.app.ticker.add(updateDistanceLabel);
+
+  function updateDistanceLabel() {
+    if (!currentHovered || canvas.tokens.controlled.length === 0) {
+      distanceLabel.visible = false;
+      return;
+    }
+
+    const selected = canvas.tokens.controlled[0];
+    const dist = canvas.grid.measureDistance(selected.center, currentHovered.center);
+
+    // Round to nearest grid unit (e.g. 5 ft)
+    const gridUnit = canvas.scene.grid.distance;
+    const snappedDist = Math.round(dist / gridUnit) * gridUnit;
+
+    distanceLabel.text = `${snappedDist} ft`;
+    distanceLabel.x = currentHovered.center.x - distanceLabel.width / 2;
+    distanceLabel.y = c
