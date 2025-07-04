@@ -46,21 +46,25 @@ Hooks.on("ready", () => {
   canvas.app.ticker.add(updateDistanceLabel);
 
   function updateDistanceLabel() {
-    if (!currentHovered || canvas.tokens.controlled.length === 0) {
-      distanceLabel.visible = false;
-      return;
-    }
-
-    const selected = canvas.tokens.controlled[0];
-    const dist = canvas.grid.measureDistance(selected.center, currentHovered.center);
-
-    // Round to nearest grid unit (e.g. 5 ft)
-    const gridUnit = canvas.scene.grid.distance;
-    const snappedDist = Math.round(dist / gridUnit) * gridUnit;
-
-    distanceLabel.text = `${snappedDist} ft`;
-    distanceLabel.x = currentHovered.center.x - distanceLabel.width / 2;
-    distanceLabel.y = currentHovered.center.y - currentHovered.h / 2 - 40;
-    distanceLabel.visible = true;
+  if (!currentHovered || canvas.tokens.controlled.length === 0) {
+    distanceLabel.visible = false;
+    return;
   }
+
+  const selected = canvas.tokens.controlled[0];
+
+  // Calculate how many grid spaces apart the tokens are
+  const dx = Math.abs(currentHovered.gridX - selected.gridX);
+  const dy = Math.abs(currentHovered.gridY - selected.gridY);
+  const spaces = Math.max(dx, dy); // Equidistant grid movement
+
+  const gridUnit = canvas.scene.grid.distance;
+  const snappedDist = spaces * gridUnit;
+
+  distanceLabel.text = `${snappedDist} ft`;
+  distanceLabel.x = currentHovered.center.x - distanceLabel.width / 2;
+  distanceLabel.y = currentHovered.center.y - currentHovered.h / 2 - 40;
+  distanceLabel.visible = true;
+}
+
 });
