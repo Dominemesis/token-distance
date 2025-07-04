@@ -1,13 +1,16 @@
 let distanceLabel;
 
 Hooks.on("ready", () => {
-  // Create a PIXI Text label once
+  // Create a PIXI Text label once with matching token label style
   distanceLabel = new PIXI.Text("", {
-    fontFamily: "Arial",
-    fontSize: 16,
+    fontFamily: "Signika",
+    fontSize: 24,
     fill: "#ffffff",
     stroke: "#000000",
-    strokeThickness: 4
+    strokeThickness: 4,
+    dropShadow: true,
+    dropShadowColor: "#000000",
+    dropShadowBlur: 4
   });
   distanceLabel.visible = false;
   canvas.interface.addChild(distanceLabel);
