@@ -46,25 +46,31 @@ Hooks.on("ready", () => {
   canvas.app.ticker.add(updateDistanceLabel);
 
   function updateDistanceLabel() {
-  if (!currentHovered || canvas.tokens.controlled.length === 0) {
-    distanceLabel.visible = false;
-    return;
+    if (!currentHovered || canvas.tokens.controlled.length === 0) {
+      distanceLabel.visible = false;
+      return;
+    }
+
+    const selected = canvas.tokens.controlled[0];
+    const gridSize = canvas.scene.grid.size;
+    const gridUnit = canvas.scene.grid.distance;
+
+    // Calculate token grid positions by dividing pixel position by grid size and flooring
+    const selectedGridX = Math.floor(selected.x / gridSize);
+    const selectedGridY = Math.floor(selected.y / gridSize);
+    const hoveredGridX = Math.floor(currentHovered.x / gridSize);
+    const hoveredGridY = Math.floor(currentHovered.y / gridSize);
+
+    // Calculate distance in grid spaces using equidistant diagonal rule
+    const dx = Math.abs(hoveredGridX - selectedGridX);
+    const dy = Math.abs(hoveredGridY - selectedGridY);
+    const spaces = Math.max(dx, dy);
+
+    const snappedDist = spaces * gridUnit;
+
+    distanceLabel.text = `${snappedDist} ft`;
+    distanceLabel.x = currentHovered.center.x - distanceLabel.width / 2;
+    distanceLabel.y = currentHovered.center.y - currentHovered.h / 2 - 40;
+    distanceLabel.visible = true;
   }
-
-  const selected = canvas.tokens.controlled[0];
-
-  // Calculate how many grid spaces apart the tokens are
-  const dx = Math.abs(currentHovered.gridX - selected.gridX);
-  const dy = Math.abs(currentHovered.gridY - selected.gridY);
-  const spaces = Math.max(dx, dy); // Equidistant grid movement
-
-  const gridUnit = canvas.scene.grid.distance;
-  const snappedDist = spaces * gridUnit;
-
-  distanceLabel.text = `${snappedDist} ft`;
-  distanceLabel.x = currentHovered.center.x - distanceLabel.width / 2;
-  distanceLabel.y = currentHovered.center.y - currentHovered.h / 2 - 40;
-  distanceLabel.visible = true;
-}
-
 });
