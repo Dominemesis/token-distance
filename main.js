@@ -57,4 +57,7 @@ Hooks.on("ready", () => {
 
     distanceLabel.text = `${snappedDist} ft`;
     distanceLabel.x = currentHovered.center.x - distanceLabel.width / 2;
-    distanceLabel.y = c
+    distanceLabel.y = currentHovered.center.y - currentHovered.h / 2 - 40;
+    distanceLabel.visible = true;
+  }
+});
