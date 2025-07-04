@@ -1,0 +1,16 @@
+{
+  "name": "token-distance",
+  "title": "Token Distance",
+  "description": "Shows the distance between the selected token and any token being hovered over.",
+  "version": "1.0.0",
+  "minimumCoreVersion": "0.12.0",
+  "compatibleCoreVersion": "13",
+  "author": "ChatGPT",
+  "esmodules": ["main.js"],
+  "scripts": [],
+  "styles": [],
+  "systems": [],
+  "dependencies": [],
+  "manifest": "https://dominemesis.github.io/token-distance/module.json",
+  "download": "https://dominemesis.github.io/token-distance/"
+}
