@@ -1,43 +1,43 @@
 let labelDiv;
 let currentHovered = null;
-let mousePosition = { x: 0, y: 0 };
 
 Hooks.on("ready", () => {
-  console.log("Token Distance | Initializing...");
+  console.log("Token Distance | Initializing");
 
-  // Create a fixed-position HTML div to display the label
+  // Create a DOM label element
   labelDiv = document.createElement("div");
-  labelDiv.style.position = "fixed";
+  labelDiv.style.position = "absolute";
   labelDiv.style.pointerEvents = "none";
-  labelDiv.style.padding = "4px 8px";
-  labelDiv.style.background = "rgba(0, 0, 0, 0.7)";
+  labelDiv.style.padding = "2px 6px";
+  labelDiv.style.borderRadius = "4px";
+  labelDiv.style.background = "rgba(0, 0, 0, 0.75)";
   labelDiv.style.color = "white";
   labelDiv.style.fontFamily = "Signika, sans-serif";
-  labelDiv.style.fontSize = "16px";
-  labelDiv.style.borderRadius = "4px";
+  labelDiv.style.fontSize = "14px";
+  labelDiv.style.border = "1px solid #999";
   labelDiv.style.zIndex = 100;
   labelDiv.style.display = "none";
   document.body.appendChild(labelDiv);
 
-  // Track mouse position globally
-  canvas.app.view.addEventListener("mousemove", (event) => {
-    mousePosition = { x: event.clientX, y: event.clientY };
-  });
-
-  // Token hover
+  // Handle token hover
   Hooks.on("hoverToken", (token, hovered) => {
-    if (!hovered || canvas.tokens.controlled.length === 0 || canvas.tokens.controlled[0] === token) {
+    console.log(`Token Distance | hoverToken: ${token.name}, hovered: ${hovered}`);
+    const selected = canvas.tokens.controlled[0];
+    if (!hovered || !selected || token === selected) {
+      console.log("Token Distance | Hiding label: no valid hover target");
       labelDiv.style.display = "none";
       currentHovered = null;
       return;
     }
+
     currentHovered = token;
     updateDistanceLabel();
   });
 
-  // Token control
+  // Handle token selection
   Hooks.on("controlToken", () => {
     if (canvas.tokens.controlled.length === 0) {
+      console.log("Token Distance | No token selected, hiding label");
       labelDiv.style.display = "none";
       currentHovered = null;
     } else {
@@ -45,15 +45,12 @@ Hooks.on("ready", () => {
     }
   });
 
-  // Scene change
-  Hooks.on("canvasReady", () => {
-    labelDiv.style.display = "none";
-    currentHovered = null;
-  });
-
-  console.log("Token Distance | Ready");
+  // Recalculate on canvas pan/zoom
+  Hooks.on("canvasPan", updateDistanceLabel);
+  Hooks.on("canvasReady", updateDistanceLabel);
 });
 
+// Update label position and text
 function updateDistanceLabel() {
   if (!currentHovered || canvas.tokens.controlled.length === 0) {
     labelDiv.style.display = "none";
@@ -72,9 +69,19 @@ function updateDistanceLabel() {
   const spaces = Math.max(gridDx, gridDy);
 
   const snappedDist = spaces * gridUnit;
-
   labelDiv.textContent = `${snappedDist.toFixed(0)} ft`;
-  labelDiv.style.left = `${mousePosition.x + 15}px`;
-  labelDiv.style.top = `${mousePosition.y + 15}px`;
-  labelDiv.style.display = "block";
+
+  try {
+    const tokenCenter = currentHovered.center;
+    const screenPos = canvas.app.renderer.plugins.interaction.mapPositionToPoint(
+      new PIXI.Point(), tokenCenter.x, tokenCenter.y
+    );
+
+    labelDiv.style.left = `${screenPos.x - labelDiv.offsetWidth / 2}px`;
+    labelDiv.style.top = `${screenPos.y - 40}px`;
+    labelDiv.style.display = "block";
+  } catch (err) {
+    console.warn("Token Distance | Failed to position label:", err);
+    labelDiv.style.display = "none";
+  }
 }
