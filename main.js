@@ -48,19 +48,19 @@ Hooks.on("ready", () => {
     }
   });
 
+  // Update label position on canvas pan (to keep it positioned correctly)
   Hooks.on("canvasPan", updateDistanceLabel);
-  canvas.app.ticker.add(updateDistanceLabel);
+
+  // Remove continuous ticker update to avoid constant unnecessary updates
+  // canvas.app.ticker.add(updateDistanceLabel);
 
   function updateDistanceLabel() {
-    console.log("Token Distance | Running updateDistanceLabel...");
-
     if (
       !distanceLabel ||
       !distanceLabel.style ||
       !currentHovered ||
       canvas.tokens.controlled.length === 0
     ) {
-      console.warn("Token Distance | Skipping update: missing elements or no token selected");
       if (distanceLabel) distanceLabel.visible = false;
       return;
     }
@@ -79,6 +79,7 @@ Hooks.on("ready", () => {
     const distPixels = Math.sqrt(dx * dx + dy * dy + dz * dz);
     const snappedDist = (distPixels / gridSize) * gridUnit;
 
+    // Log only when label is actually visible
     console.log(`Token Distance | Distance from ${selected.name} to ${currentHovered.name}: ${snappedDist.toFixed(2)} ft (dx: ${dx}, dy: ${dy}, dz: ${dz})`);
 
     distanceLabel.text = `${Math.round(snappedDist)} ft`;
