@@ -1,6 +1,8 @@
 let distanceLabel;
 
 Hooks.on("ready", () => {
+  console.log("Token Distance | Module ready");
+
   // Create a PIXI Text label once with matching token label style
   distanceLabel = new PIXI.Text("", {
     fontFamily: "Signika",
@@ -13,15 +15,18 @@ Hooks.on("ready", () => {
     dropShadowBlur: 4
   });
   distanceLabel.visible = false;
-  canvas.tokens.addChild(distanceLabel);
 
-  // Store current hovered token
+  // Add label to top UI layer so it's always visible
+  canvas.interface.addChild(distanceLabel);
+
   let currentHovered = null;
 
-  // Watch for hover in/out events
   Hooks.on("hoverToken", (token, hovered) => {
     const selected = canvas.tokens.controlled[0];
+    console.log(`Token Distance | hoverToken: ${token.name}, hovered: ${hovered}`);
+
     if (!hovered || !selected || token === selected) {
+      console.log("Token Distance | Hiding label: no valid hover target");
       if (distanceLabel) distanceLabel.visible = false;
       currentHovered = null;
       return;
@@ -31,9 +36,11 @@ Hooks.on("ready", () => {
     updateDistanceLabel();
   });
 
-  // If a token is deselected, hide the label
   Hooks.on("controlToken", () => {
+    console.log("Token Distance | controlToken fired");
+
     if (canvas.tokens.controlled.length === 0) {
+      console.log("Token Distance | No token selected, hiding label");
       if (distanceLabel) distanceLabel.visible = false;
       currentHovered = null;
     } else {
@@ -41,17 +48,19 @@ Hooks.on("ready", () => {
     }
   });
 
-  // Update label position on each frame
   Hooks.on("canvasPan", updateDistanceLabel);
   canvas.app.ticker.add(updateDistanceLabel);
 
   function updateDistanceLabel() {
+    console.log("Token Distance | Running updateDistanceLabel...");
+
     if (
       !distanceLabel ||
       !distanceLabel.style ||
       !currentHovered ||
       canvas.tokens.controlled.length === 0
     ) {
+      console.warn("Token Distance | Skipping update: missing elements or no token selected");
       if (distanceLabel) distanceLabel.visible = false;
       return;
     }
@@ -60,20 +69,17 @@ Hooks.on("ready", () => {
     const gridSize = canvas.scene.grid.size;
     const gridUnit = canvas.scene.grid.distance;
 
-    // Get 2D center pixel distances
     const dx = currentHovered.center.x - selected.center.x;
     const dy = currentHovered.center.y - selected.center.y;
 
-    // Get elevation from tokens (default to 0)
     const selectedElevation = selected.document.elevation ?? 0;
     const hoveredElevation = currentHovered.document.elevation ?? 0;
     const dz = hoveredElevation - selectedElevation;
 
-    // Compute true 3D distance in pixels
     const distPixels = Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-    // Convert to grid units (e.g., feet)
     const snappedDist = (distPixels / gridSize) * gridUnit;
+
+    console.log(`Token Distance | Distance from ${selected.name} to ${currentHovered.name}: ${snappedDist.toFixed(2)} ft (dx: ${dx}, dy: ${dy}, dz: ${dz})`);
 
     distanceLabel.text = `${Math.round(snappedDist)} ft`;
     distanceLabel.x = currentHovered.center.x - distanceLabel.width / 2;
