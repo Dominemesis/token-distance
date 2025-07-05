@@ -1,27 +1,24 @@
-// Define a shared TextStyle once for the entire module
-const DISTANCE_STYLE = new PIXI.TextStyle({
-  fontFamily: "Signika",
-  fontSize: 24,
-  fill: "#ffffff",
-  stroke: "#000000",
-  strokeThickness: 4,
-  dropShadow: true,
-  dropShadowColor: "#000000",
-  dropShadowBlur: 4
-});
-
 let distanceLabel;
 let currentHovered = null;
 
 Hooks.on("ready", () => {
-  // Create the distance label once, using the shared style
-  distanceLabel = new PIXI.Text("", DISTANCE_STYLE);
+  // Create a PIXI Text label once with matching token label style
+  distanceLabel = new PIXI.Text("", {
+    fontFamily: "Signika",
+    fontSize: 24,
+    fill: "#ffffff",
+    stroke: "#000000",
+    strokeThickness: 4,
+    dropShadow: true,
+    dropShadowColor: "#000000",
+    dropShadowBlur: 4
+  });
   distanceLabel.visible = false;
 
-  // Add the label to the interface layer (above tokens)
+  // Add label to interface layer so it's always visible
   canvas.interface.addChild(distanceLabel);
 
-  // Listen for token hover
+  // Handle token hover
   Hooks.on("hoverToken", (token, hovered) => {
     const selected = canvas.tokens.controlled[0];
     if (!hovered || !selected || token === selected) {
@@ -34,7 +31,7 @@ Hooks.on("ready", () => {
     updateDistanceLabel();
   });
 
-  // Listen for token selection changes
+  // Handle token selection changes
   Hooks.on("controlToken", () => {
     if (canvas.tokens.controlled.length === 0) {
       distanceLabel.visible = false;
@@ -44,20 +41,30 @@ Hooks.on("ready", () => {
     }
   });
 
-  // Also update label when the canvas is panned (to keep label in sync)
+  // Update label on canvas pan
   Hooks.on("canvasPan", updateDistanceLabel);
+
+  // Update label on every frame tick (optional, you can remove if too heavy)
+  canvas.app.ticker.add(updateDistanceLabel);
+});
+
+// Reset state when a new scene is fully loaded
+Hooks.once("canvasReady", () => {
+  console.log("Token Distance | Canvas ready, resetting label and state.");
+  if (distanceLabel) distanceLabel.visible = false;
+  currentHovered = null;
 });
 
 function updateDistanceLabel() {
-  // If no hovered token or no selected token, hide label and skip
   if (!currentHovered || canvas.tokens.controlled.length === 0) {
     distanceLabel.visible = false;
     return;
   }
 
-  // Guard: ensure style is ready before accessing width
+  // Wait for PIXI Text style to be ready before updating
   if (!distanceLabel.style || distanceLabel.style.styleID === null) {
-    console.warn("Token Distance | Label style not ready, skipping position.");
+    console.log("Token Distance | Label style not ready, retrying...");
+    setTimeout(updateDistanceLabel, 100); // Retry after 100ms
     return;
   }
 
@@ -65,13 +72,11 @@ function updateDistanceLabel() {
   const gridSize = canvas.scene.grid.size;
   const gridUnit = canvas.scene.grid.distance;
 
-  // Calculate grid coordinates
   const selectedGridX = Math.floor(selected.x / gridSize);
   const selectedGridY = Math.floor(selected.y / gridSize);
   const hoveredGridX = Math.floor(currentHovered.x / gridSize);
   const hoveredGridY = Math.floor(currentHovered.y / gridSize);
 
-  // Distance using Chebyshev distance (max of dx, dy)
   const dx = Math.abs(hoveredGridX - selectedGridX);
   const dy = Math.abs(hoveredGridY - selectedGridY);
   const spaces = Math.max(dx, dy);
@@ -79,10 +84,7 @@ function updateDistanceLabel() {
   const snappedDist = spaces * gridUnit;
 
   distanceLabel.text = `${snappedDist} ft`;
-
-  // Position the label centered above hovered token
   distanceLabel.x = currentHovered.center.x - distanceLabel.width / 2;
   distanceLabel.y = currentHovered.center.y - currentHovered.h / 2 - 40;
-
   distanceLabel.visible = true;
 }
