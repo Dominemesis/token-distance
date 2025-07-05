@@ -74,16 +74,18 @@ function updateDistanceLabel() {
 
     distanceLabel.text = `${snappedDist} ft`;
 
-    // Delay positioning to allow renderer to update styles internally
+    // Wait TWO frames to ensure PIXI layout is complete before accessing width
     requestAnimationFrame(() => {
-      try {
-        distanceLabel.x = currentHovered.center.x - distanceLabel.width / 2;
-        distanceLabel.y = currentHovered.center.y - currentHovered.h / 2 - 40;
-        distanceLabel.visible = true;
-      } catch (err) {
-        console.error("Token Distance | Delayed label update failed:", err);
-        distanceLabel.visible = false;
-      }
+      requestAnimationFrame(() => {
+        try {
+          distanceLabel.x = currentHovered.center.x - distanceLabel.width / 2;
+          distanceLabel.y = currentHovered.center.y - currentHovered.h / 2 - 40;
+          distanceLabel.visible = true;
+        } catch (err) {
+          console.error("Token Distance | Delayed label update failed (after 2 frames):", err);
+          distanceLabel.visible = false;
+        }
+      });
     });
   } catch (err) {
     console.error("Token Distance | Error updating label:", err);
