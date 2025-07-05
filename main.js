@@ -45,12 +45,11 @@ Hooks.on("ready", () => {
     }
   });
 
-  // Recalculate on canvas pan/zoom
+  // Recalculate on canvas pan/zoom/scene load
   Hooks.on("canvasPan", updateDistanceLabel);
   Hooks.on("canvasReady", updateDistanceLabel);
 });
 
-// Update label position and text
 function updateDistanceLabel() {
   if (!currentHovered || canvas.tokens.controlled.length === 0) {
     labelDiv.style.display = "none";
@@ -63,7 +62,6 @@ function updateDistanceLabel() {
 
   const dx = Math.abs(currentHovered.center.x - selected.center.x);
   const dy = Math.abs(currentHovered.center.y - selected.center.y);
-
   const gridDx = dx / gridSize;
   const gridDy = dy / gridSize;
   const spaces = Math.max(gridDx, gridDy);
@@ -72,13 +70,13 @@ function updateDistanceLabel() {
   labelDiv.textContent = `${snappedDist.toFixed(0)} ft`;
 
   try {
-    const tokenCenter = currentHovered.center;
-    const screenPos = canvas.app.renderer.plugins.interaction.mapPositionToPoint(
-      new PIXI.Point(), tokenCenter.x, tokenCenter.y
-    );
+    const world = currentHovered.center;
+    const transform = canvas.stage.worldTransform;
+    const screenX = (world.x * transform.a) + transform.tx;
+    const screenY = (world.y * transform.d) + transform.ty;
 
-    labelDiv.style.left = `${screenPos.x - labelDiv.offsetWidth / 2}px`;
-    labelDiv.style.top = `${screenPos.y - 40}px`;
+    labelDiv.style.left = `${screenX - labelDiv.offsetWidth / 2}px`;
+    labelDiv.style.top = `${screenY - 40}px`;
     labelDiv.style.display = "block";
   } catch (err) {
     console.warn("Token Distance | Failed to position label:", err);
