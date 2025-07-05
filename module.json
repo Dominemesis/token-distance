@@ -2,7 +2,7 @@
   "name": "token-distance",
   "title": "Token Distance",
   "description": "Shows the distance between the selected token and any token being hovered over.",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "minimumCoreVersion": "11",
   "compatibleCoreVersion": "12",
   "author": "Leland Barnard",
