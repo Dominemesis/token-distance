@@ -72,4 +72,27 @@ function updateDistanceLabel() {
   const selectedGridX = Math.floor(selected.x / gridSize);
   const selectedGridY = Math.floor(selected.y / gridSize);
   const hoveredGridX = Math.floor(currentHovered.x / gridSize);
-  const hoveredGridY = Math.floor(cu
+  const hoveredGridY = Math.floor(currentHovered.y / gridSize);
+
+  const dx = Math.abs(hoveredGridX - selectedGridX);
+  const dy = Math.abs(hoveredGridY - selectedGridY);
+  const spaces = Math.max(dx, dy);
+
+  const snappedDist = spaces * gridUnit;
+  distanceLabel.text = `${snappedDist} ft`;
+
+  try {
+    // Ensure label is renderable
+    if (!distanceLabel.style || !distanceLabel.style.styleID) {
+      console.warn("Token Distance | Label style not ready, skipping position.");
+      return;
+    }
+
+    distanceLabel.x = currentHovered.center.x - (distanceLabel.width ?? 0) / 2;
+    distanceLabel.y = currentHovered.center.y - currentHovered.h / 2 - 40;
+    distanceLabel.visible = true;
+  } catch (err) {
+    console.error("Token Distance | Error positioning label:", err);
+    distanceLabel.visible = false;
+  }
+}
