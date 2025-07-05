@@ -4,8 +4,8 @@ let currentHovered = null;
 Hooks.once("canvasReady", () => {
   console.log("Token Distance | canvasReady");
 
-  // Create and configure PIXI Text label
-  distanceLabel = new PIXI.Text("", {
+  // Create PIXI Text label
+  distanceLabel = new PIXI.Text("...", {
     fontFamily: "Signika",
     fontSize: 24,
     fill: "#ffffff",
@@ -16,9 +16,11 @@ Hooks.once("canvasReady", () => {
     dropShadowBlur: 4
   });
 
-  distanceLabel.visible = false;
+  // Force offscreen render to initialize style
+  distanceLabel.visible = true;
+  distanceLabel.x = -9999;
+  distanceLabel.y = -9999;
 
-  // Add to canvas interface
   if (canvas?.interface) {
     canvas.interface.addChild(distanceLabel);
   } else {
@@ -26,7 +28,19 @@ Hooks.once("canvasReady", () => {
     return;
   }
 
-  // Hover events
+  // Force a rendering pass to initialize styleID
+  try {
+    canvas.app.stage.updateTransform();
+  } catch (e) {
+    console.warn("Token Distance | Could not flush transform during init.");
+  }
+
+  // Reset after dummy render
+  distanceLabel.visible = false;
+  distanceLabel.text = "";
+
+  // === Event Hooks ===
+
   Hooks.on("hoverToken", (token, hovered) => {
     console.log(`Token Distance | hoverToken: ${token.name}, hovered: ${hovered}`);
 
@@ -42,7 +56,6 @@ Hooks.once("canvasReady", () => {
     updateDistanceLabel();
   });
 
-  // Control event
   Hooks.on("controlToken", () => {
     if (canvas.tokens.controlled.length === 0) {
       distanceLabel.visible = false;
@@ -52,7 +65,6 @@ Hooks.once("canvasReady", () => {
     }
   });
 
-  // Pan event
   Hooks.on("canvasPan", updateDistanceLabel);
 });
 
@@ -82,7 +94,7 @@ function updateDistanceLabel() {
   distanceLabel.text = `${snappedDist} ft`;
 
   try {
-    // Ensure label is renderable
+    // Guard: ensure label style is initialized
     if (!distanceLabel.style || !distanceLabel.style.styleID) {
       console.warn("Token Distance | Label style not ready, skipping position.");
       return;
