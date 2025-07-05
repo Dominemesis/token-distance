@@ -1,30 +1,27 @@
-let distanceLabel;
-let currentHovered = null;
-
-const labelTextStyle = new PIXI.TextStyle({
-  fontFamily: "Signika",
-  fontSize: 24,
-  fill: "#ffffff",
-  stroke: "#000000",
-  strokeThickness: 4,
-  dropShadow: true,
-  dropShadowColor: "#000000",
-  dropShadowBlur: 4
-});
+let distanceDiv = null;
 
 Hooks.on("ready", () => {
-  console.log("Token Distance | Initializing...");
+  // Create a reusable HTML div for the distance label
+  distanceDiv = document.createElement("div");
+  distanceDiv.id = "token-distance-label";
+  distanceDiv.style.position = "absolute";
+  distanceDiv.style.padding = "4px 8px";
+  distanceDiv.style.background = "rgba(0,0,0,0.7)";
+  distanceDiv.style.color = "white";
+  distanceDiv.style.borderRadius = "4px";
+  distanceDiv.style.fontSize = "14px";
+  distanceDiv.style.fontFamily = "Signika, sans-serif";
+  distanceDiv.style.pointerEvents = "none";
+  distanceDiv.style.zIndex = 100;
+  distanceDiv.style.display = "none";
+  document.body.appendChild(distanceDiv);
 
-  distanceLabel = new PIXI.Text("", labelTextStyle);
-  distanceLabel.visible = false;
-  canvas.interface.addChild(distanceLabel);
+  let currentHovered = null;
 
   Hooks.on("hoverToken", (token, hovered) => {
-    console.log(`Token Distance | hoverToken: ${token.name}, hovered: ${hovered}`);
     const selected = canvas.tokens.controlled[0];
     if (!hovered || !selected || token === selected) {
-      console.log("Token Distance | Hiding label: no valid hover target");
-      distanceLabel.visible = false;
+      distanceDiv.style.display = "none";
       currentHovered = null;
       return;
     }
@@ -35,7 +32,7 @@ Hooks.on("ready", () => {
 
   Hooks.on("controlToken", () => {
     if (canvas.tokens.controlled.length === 0) {
-      distanceLabel.visible = false;
+      distanceDiv.style.display = "none";
       currentHovered = null;
     } else {
       updateDistanceLabel();
@@ -44,51 +41,26 @@ Hooks.on("ready", () => {
 
   Hooks.on("canvasPan", updateDistanceLabel);
 
-  Hooks.on("canvasReady", () => {
-    console.log("Token Distance | Scene ready, resetting label.");
-    if (distanceLabel) distanceLabel.visible = false;
-    currentHovered = null;
-  });
-});
+  function updateDistanceLabel() {
+    if (!currentHovered || canvas.tokens.controlled.length === 0) {
+      distanceDiv.style.display = "none";
+      return;
+    }
 
-function updateDistanceLabel() {
-  if (!currentHovered || canvas.tokens.controlled.length === 0) {
-    distanceLabel.visible = false;
-    return;
-  }
-
-  try {
     const selected = canvas.tokens.controlled[0];
     const gridSize = canvas.scene.grid.size;
     const gridUnit = canvas.scene.grid.distance;
 
-    const selectedGridX = Math.floor(selected.x / gridSize);
-    const selectedGridY = Math.floor(selected.y / gridSize);
-    const hoveredGridX = Math.floor(currentHovered.x / gridSize);
-    const hoveredGridY = Math.floor(currentHovered.y / gridSize);
-
-    const dx = Math.abs(hoveredGridX - selectedGridX);
-    const dy = Math.abs(hoveredGridY - selectedGridY);
+    const dx = Math.abs(Math.floor(currentHovered.x / gridSize) - Math.floor(selected.x / gridSize));
+    const dy = Math.abs(Math.floor(currentHovered.y / gridSize) - Math.floor(selected.y / gridSize));
     const spaces = Math.max(dx, dy);
     const snappedDist = spaces * gridUnit;
 
-    distanceLabel.text = `${snappedDist} ft`;
+    distanceDiv.textContent = `${snappedDist} ft`;
 
-    // Wait TWO frames to ensure PIXI layout is complete before accessing width
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        try {
-          distanceLabel.x = currentHovered.center.x - distanceLabel.width / 2;
-          distanceLabel.y = currentHovered.center.y - currentHovered.h / 2 - 40;
-          distanceLabel.visible = true;
-        } catch (err) {
-          console.error("Token Distance | Delayed label update failed (after 2 frames):", err);
-          distanceLabel.visible = false;
-        }
-      });
-    });
-  } catch (err) {
-    console.error("Token Distance | Error updating label:", err);
-    distanceLabel.visible = false;
+    const pos = canvas.app.renderer.plugins.interaction.mouse.global;
+    distanceDiv.style.left = `${pos.x + 10}px`;
+    distanceDiv.style.top = `${pos.y + 10}px`;
+    distanceDiv.style.display = "block";
   }
-}
+});
