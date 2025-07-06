@@ -16,6 +16,7 @@ Hooks.once("ready", () => {
 
   // Update or create distance text for a token
   function updateDistanceText(token) {
+    console.log(`updateDistanceText called for token ${token.name}`);
     if (!token?.isVisible) return;
 
     let text = distanceTexts.get(token.id);
@@ -50,7 +51,7 @@ Hooks.once("ready", () => {
         align: "center",
       });
       text.anchor.set(0, 0.5); // Left center anchor for right side display
-      canvas.tokens.addChild(text);
+      canvas.interface.addChild(text); // <-- changed here
       distanceTexts.set(token.id, text);
     }
 
