@@ -1,5 +1,4 @@
 {
-{
   "name": "token-distance",
   "title": "Token Distance",
   "description": "Shows the distance between the selected token and any token being hovered over.",
