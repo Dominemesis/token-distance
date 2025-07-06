@@ -1,85 +1,116 @@
-let labelDiv;
-let currentHovered = null;
+/**
+ * Token Distance Display Module Main
+ * Shows token distance at bottom center with scale-aware font size.
+ */
 
-Hooks.on("ready", () => {
-  console.log("Token Distance | Initializing");
+Hooks.once("init", () => {
+  console.log("TokenDistance | Initializing module");
 
-  // Create a DOM label element
-  labelDiv = document.createElement("div");
-  labelDiv.style.position = "absolute";
-  labelDiv.style.pointerEvents = "none";
-  labelDiv.style.padding = "2px 6px";
-  labelDiv.style.borderRadius = "4px";
-  labelDiv.style.background = "rgba(0, 0, 0, 0.75)";
-  labelDiv.style.color = "white";
-  labelDiv.style.fontFamily = "Signika, sans-serif";
-  labelDiv.style.fontSize = "14px";
-  labelDiv.style.border = "1px solid #999";
-  labelDiv.style.zIndex = 100;
-  labelDiv.style.display = "none";
-  document.body.appendChild(labelDiv);
-
-  // Handle token hover
-  Hooks.on("hoverToken", (token, hovered) => {
-    console.log(`Token Distance | hoverToken: ${token.name}, hovered: ${hovered}`);
-    const selected = canvas.tokens.controlled[0];
-    if (!hovered || !selected || token === selected) {
-      console.log("Token Distance | Hiding label: no valid hover target");
-      labelDiv.style.display = "none";
-      currentHovered = null;
-      return;
-    }
-
-    currentHovered = token;
-    updateDistanceLabel();
-  });
-
-  // Handle token selection
-  Hooks.on("controlToken", () => {
-    if (canvas.tokens.controlled.length === 0) {
-      console.log("Token Distance | No token selected, hiding label");
-      labelDiv.style.display = "none";
-      currentHovered = null;
-    } else {
-      updateDistanceLabel();
-    }
-  });
-
-  // Recalculate on canvas pan/zoom/scene load
-  Hooks.on("canvasPan", updateDistanceLabel);
-  Hooks.on("canvasReady", updateDistanceLabel);
+  // Settings could go here if needed
 });
 
-function updateDistanceLabel() {
-  if (!currentHovered || canvas.tokens.controlled.length === 0) {
-    labelDiv.style.display = "none";
-    return;
+Hooks.once("ready", () => {
+  console.log("TokenDistance | Ready");
+
+  // Cache for PIXI.Text objects by token id
+  const distanceTexts = new Map();
+
+  // Helper: get scaled font size like Health Estimate
+  function getScaledFontSize(token) {
+    // Default font size setting; you can make this configurable
+    const baseFontSize = 18;
+
+    // Grid scale: token size * grid dimension scale
+    const gridScale = canvas.scene.dimensions.size / 100; // same as HealthEstimate.gridScale
+
+    // Zoom level clamped to max 1, optionally disable scaling if you want
+    const zoomLevel = Math.min(1, canvas.stage.scale.x);
+
+    return ((baseFontSize * gridScale) / zoomLevel) * 1.5; // multiplied by 1.5 for visibility
   }
 
-  const selected = canvas.tokens.controlled[0];
-  const gridSize = canvas.scene.grid.size;
-  const gridUnit = canvas.scene.grid.distance;
+  // Create or update distance text for a token
+  function updateDistanceText(token) {
+    if (!token || token.isVisible === false) return;
 
-  const dx = Math.abs(currentHovered.center.x - selected.center.x);
-  const dy = Math.abs(currentHovered.center.y - selected.center.y);
-  const gridDx = dx / gridSize;
-  const gridDy = dy / gridSize;
-  const spaces = Math.max(gridDx, gridDy);
+    let text = distanceTexts.get(token.id);
 
-  const snappedDist = spaces * gridUnit;
-  labelDiv.textContent = `${snappedDist.toFixed(0)} ft`;
+    // Distance from controlled tokens (or zero if none)
+    let dist = 0;
+    const controlled = canvas.tokens.controlled;
+    if (controlled.length > 0) {
+      const first = controlled[0];
+      if (first.id !== token.id) {
+        dist = canvas.grid.measureDistance(first.center, token.center);
+      }
+    }
 
-  try {
-    const world = currentHovered.center;
-    const transform = canvas.stage.worldTransform;
-    const screenX = (world.x * transform.a) + transform.tx;
-    const screenY = (world.y * transform.d) + transform.ty;
+    if (!text) {
+      // Create new PIXI.Text
+      text = new PIXI.Text("", {
+        fontFamily: "Arial",
+        fontWeight: "bold",
+        fill: "#FFFFFF",
+        stroke: "#000000",
+        strokeThickness: 3,
+        dropShadow: true,
+        dropShadowColor: "#000000",
+        dropShadowBlur: 4,
+        dropShadowDistance: 2,
+        align: "center",
+      });
+      text.anchor.set(0.5, 0); // center horizontally, top vertically
+      canvas.tokens.addChild(text);
+      distanceTexts.set(token.id, text);
+    }
 
-    labelDiv.style.left = `${screenX - labelDiv.offsetWidth / 2}px`;
-    labelDiv.style.top = `${screenY - 40}px`;
-    labelDiv.style.display = "block";
-  } catch (err) {
-    console.warn("Token Distance | Failed to position label:", err);
-    labelDiv.style.display = "none";
+    // Update text content and style
+    text.text = dist > 0 ? dist.toFixed(1) : "";
+
+    // Scale font size with zoom and grid
+    text.style.fontSize = getScaledFontSize(token);
+
+    // Position text at bottom center of token
+    const tokenBounds = token.getBounds();
+    text.position.set(tokenBounds.x + tokenBounds.width / 2, tokenBounds.y + tokenBounds.height + 2);
+
+    // Show/hide based on distance > 0
+    text.visible = dist > 0;
   }
-}
+
+  // Remove distance text when token is deleted
+  Hooks.on("deleteToken", (scene, tokenId) => {
+    const text = distanceTexts.get(tokenId);
+    if (text) {
+      text.destroy();
+      distanceTexts.delete(tokenId);
+    }
+  });
+
+  // Update distance texts on these hooks
+  function updateAllDistances() {
+    for (const token of canvas.tokens.placeables) {
+      updateDistanceText(token);
+    }
+  }
+
+  Hooks.on("canvasReady", () => {
+    updateAllDistances();
+  });
+
+  Hooks.on("updateToken", (scene, tokenData) => {
+    updateAllDistances();
+  });
+
+  Hooks.on("controlToken", () => {
+    updateAllDistances();
+  });
+
+  Hooks.on("hoverToken", () => {
+    updateAllDistances();
+  });
+
+  Hooks.on("canvasPan", () => {
+    updateAllDistances();
+  });
+});
