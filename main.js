@@ -1,52 +1,41 @@
-/**
- * Token Distance Display Module Main
- * Shows token distance at bottom center with scale-aware font size.
- */
-
-Hooks.once("init", () => {
-  console.log("TokenDistance | Initializing module");
-
-  // Settings could go here if needed
-});
+// main.js
 
 Hooks.once("ready", () => {
-  console.log("TokenDistance | Ready");
+  console.log("Main | Module ready");
 
-  // Cache for PIXI.Text objects by token id
+  // --- Health Estimate integration ---
+
+  // HealthEstimate global or your existing logic here if needed
+  // For example, you might initialize or update health estimate here
+  // If you want, I can also help integrate healthEstimate calls/hooks
+
+  // --- Token Distance Display Below Token ---
+
   const distanceTexts = new Map();
 
-  // Helper: get scaled font size like Health Estimate
-  function getScaledFontSize(token) {
-    // Default font size setting; you can make this configurable
+  function getScaledFontSize() {
     const baseFontSize = 18;
-
-    // Grid scale: token size * grid dimension scale
-    const gridScale = canvas.scene.dimensions.size / 100; // same as HealthEstimate.gridScale
-
-    // Zoom level clamped to max 1, optionally disable scaling if you want
-    const zoomLevel = Math.min(1, canvas.stage.scale.x);
-
-    return ((baseFontSize * gridScale) / zoomLevel) * 1.5; // multiplied by 1.5 for visibility
+    const gridScale = canvas.scene?.dimensions?.size / 100 || 1;
+    const zoomLevel = Math.min(1, canvas.stage?.scale.x || 1);
+    return ((baseFontSize * gridScale) / zoomLevel) * 1.5;
   }
 
-  // Create or update distance text for a token
   function updateDistanceText(token) {
-    if (!token || token.isVisible === false) return;
+    if (!token?.isVisible) return;
 
     let text = distanceTexts.get(token.id);
 
-    // Distance from controlled tokens (or zero if none)
-    let dist = 0;
     const controlled = canvas.tokens.controlled;
-    if (controlled.length > 0) {
-      const first = controlled[0];
-      if (first.id !== token.id) {
-        dist = canvas.grid.measureDistance(first.center, token.center);
+    if (controlled.length === 0 || controlled[0].id === token.id) {
+      if (text) {
+        text.visible = false;
       }
+      return;
     }
 
+    const dist = canvas.grid.measureDistance(controlled[0].center, token.center);
+
     if (!text) {
-      // Create new PIXI.Text
       text = new PIXI.Text("", {
         fontFamily: "Arial",
         fontWeight: "bold",
@@ -59,58 +48,29 @@ Hooks.once("ready", () => {
         dropShadowDistance: 2,
         align: "center",
       });
-      text.anchor.set(0.5, 0); // center horizontally, top vertically
+      text.anchor.set(0.5, 0);
       canvas.tokens.addChild(text);
       distanceTexts.set(token.id, text);
     }
 
-    // Update text content and style
-    text.text = dist > 0 ? dist.toFixed(1) : "";
+    text.text = dist.toFixed(1);
+    text.style.fontSize = getScaledFontSize();
 
-    // Scale font size with zoom and grid
-    text.style.fontSize = getScaledFontSize(token);
-
-    // Position text at bottom center of token
-    const tokenBounds = token.getBounds();
-    text.position.set(tokenBounds.x + tokenBounds.width / 2, tokenBounds.y + tokenBounds.height + 2);
-
-    // Show/hide based on distance > 0
-    text.visible = dist > 0;
+    const bounds = token.getBounds();
+    text.position.set(bounds.x + bounds.width / 2, bounds.y + bounds.height + 4);
+    text.visible = true;
   }
 
-  // Remove distance text when token is deleted
-  Hooks.on("deleteToken", (scene, tokenId) => {
-    const text = distanceTexts.get(tokenId);
-    if (text) {
-      text.destroy();
-      distanceTexts.delete(tokenId);
-    }
-  });
-
-  // Update distance texts on these hooks
   function updateAllDistances() {
     for (const token of canvas.tokens.placeables) {
       updateDistanceText(token);
     }
   }
 
-  Hooks.on("canvasReady", () => {
-    updateAllDistances();
-  });
-
-  Hooks.on("updateToken", (scene, tokenData) => {
-    updateAllDistances();
-  });
-
-  Hooks.on("controlToken", () => {
-    updateAllDistances();
-  });
-
-  Hooks.on("hoverToken", () => {
-    updateAllDistances();
-  });
-
-  Hooks.on("canvasPan", () => {
-    updateAllDistances();
-  });
+  // Update distances when the canvas is ready or tokens move/control changes
+  Hooks.on("canvasReady", updateAllDistances);
+  Hooks.on("updateToken", updateAllDistances);
+  Hooks.on("controlToken", updateAllDistances);
+  Hooks.on("canvasPan", updateAllDistances);
+  Hooks.on("hoverToken", updateAllDistances);
 });
