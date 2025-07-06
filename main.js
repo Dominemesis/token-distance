@@ -1,12 +1,11 @@
 // main.js
 
 Hooks.once("ready", () => {
-  console.log("Main | Module ready");
+  console.log("Token Distance | Module ready");
 
-  // Map to store PIXI.Text objects for tokens
   const distanceTexts = new Map();
+  const hoveredTokens = new Set();
 
-  // Calculate font size scaled to grid and zoom
   function getScaledFontSize() {
     const baseFontSize = 18;
     const gridScale = canvas.scene?.dimensions?.size / 100 || 1;
@@ -14,28 +13,24 @@ Hooks.once("ready", () => {
     return ((baseFontSize * gridScale) / zoomLevel) * 1.5;
   }
 
-  // Update or create distance text for a token
   function updateDistanceText(token) {
-    console.log(`updateDistanceText called for token ${token.name}`);
     if (!token?.isVisible) return;
 
-    let text = distanceTexts.get(token.id);
-
     const controlled = canvas.tokens.controlled;
-    if (controlled.length === 0 || controlled[0].id === token.id) {
-      // Hide distance text if no controlled token or token is controlled itself
-      if (text) text.visible = false;
+    if (controlled.length !== 1 || controlled[0].id === token.id) {
+      const existing = distanceTexts.get(token.id);
+      if (existing) existing.visible = false;
       return;
     }
 
-    // Show distance only when the token is hovered
-    if (!token.hover) {
-      if (text) text.visible = false;
+    if (!hoveredTokens.has(token.id)) {
+      const existing = distanceTexts.get(token.id);
+      if (existing) existing.visible = false;
       return;
     }
 
-    // Calculate distance from first controlled token to hovered token
     const dist = canvas.grid.measureDistance(controlled[0].center, token.center);
+    let text = distanceTexts.get(token.id);
 
     if (!text) {
       text = new PIXI.Text("", {
@@ -48,10 +43,10 @@ Hooks.once("ready", () => {
         dropShadowColor: "#000000",
         dropShadowBlur: 4,
         dropShadowDistance: 2,
-        align: "center",
+        align: "center"
       });
-      text.anchor.set(0, 0.5); // Left center anchor for right side display
-      canvas.interface.addChild(text); // <-- changed here
+      text.anchor.set(0, 0.5); // Left-center anchor for right-side display
+      canvas.interface.addChild(text);
       distanceTexts.set(token.id, text);
     }
 
@@ -59,22 +54,24 @@ Hooks.once("ready", () => {
     text.style.fontSize = getScaledFontSize();
 
     const bounds = token.getBounds();
-    // Position to the right of the token, vertically centered
     text.position.set(bounds.x + bounds.width + 6, bounds.y + bounds.height / 2);
     text.visible = true;
   }
 
-  // Update distances for all tokens on the canvas
   function updateAllDistances() {
     for (const token of canvas.tokens.placeables) {
       updateDistanceText(token);
     }
   }
 
-  // Hooks to keep distance text updated
+  Hooks.on("hoverToken", (token, hovered) => {
+    if (hovered) hoveredTokens.add(token.id);
+    else hoveredTokens.delete(token.id);
+    updateAllDistances();
+  });
+
   Hooks.on("canvasReady", updateAllDistances);
   Hooks.on("updateToken", updateAllDistances);
   Hooks.on("controlToken", updateAllDistances);
   Hooks.on("canvasPan", updateAllDistances);
-  Hooks.on("hoverToken", updateAllDistances);
 });
