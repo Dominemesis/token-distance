@@ -3,16 +3,10 @@
 Hooks.once("ready", () => {
   console.log("Main | Module ready");
 
-  // --- Health Estimate integration ---
-
-  // HealthEstimate global or your existing logic here if needed
-  // For example, you might initialize or update health estimate here
-  // If you want, I can also help integrate healthEstimate calls/hooks
-
-  // --- Token Distance Display Below Token ---
-
+  // Map to store PIXI.Text objects for tokens
   const distanceTexts = new Map();
 
+  // Calculate font size scaled to grid and zoom
   function getScaledFontSize() {
     const baseFontSize = 18;
     const gridScale = canvas.scene?.dimensions?.size / 100 || 1;
@@ -20,6 +14,7 @@ Hooks.once("ready", () => {
     return ((baseFontSize * gridScale) / zoomLevel) * 1.5;
   }
 
+  // Update or create distance text for a token
   function updateDistanceText(token) {
     if (!token?.isVisible) return;
 
@@ -27,12 +22,18 @@ Hooks.once("ready", () => {
 
     const controlled = canvas.tokens.controlled;
     if (controlled.length === 0 || controlled[0].id === token.id) {
-      if (text) {
-        text.visible = false;
-      }
+      // Hide distance text if no controlled token or token is controlled itself
+      if (text) text.visible = false;
       return;
     }
 
+    // Show distance only when the token is hovered
+    if (!token.hover) {
+      if (text) text.visible = false;
+      return;
+    }
+
+    // Calculate distance from first controlled token to hovered token
     const dist = canvas.grid.measureDistance(controlled[0].center, token.center);
 
     if (!text) {
@@ -48,7 +49,7 @@ Hooks.once("ready", () => {
         dropShadowDistance: 2,
         align: "center",
       });
-      text.anchor.set(0.5, 0);
+      text.anchor.set(0, 0.5); // Left center anchor for right side display
       canvas.tokens.addChild(text);
       distanceTexts.set(token.id, text);
     }
@@ -57,17 +58,19 @@ Hooks.once("ready", () => {
     text.style.fontSize = getScaledFontSize();
 
     const bounds = token.getBounds();
-    text.position.set(bounds.x + bounds.width / 2, bounds.y + bounds.height + 4);
+    // Position to the right of the token, vertically centered
+    text.position.set(bounds.x + bounds.width + 6, bounds.y + bounds.height / 2);
     text.visible = true;
   }
 
+  // Update distances for all tokens on the canvas
   function updateAllDistances() {
     for (const token of canvas.tokens.placeables) {
       updateDistanceText(token);
     }
   }
 
-  // Update distances when the canvas is ready or tokens move/control changes
+  // Hooks to keep distance text updated
   Hooks.on("canvasReady", updateAllDistances);
   Hooks.on("updateToken", updateAllDistances);
   Hooks.on("controlToken", updateAllDistances);
