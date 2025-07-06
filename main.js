@@ -1,77 +1,85 @@
-// main.js
+let labelDiv;
+let currentHovered = null;
 
-Hooks.once("ready", () => {
-  console.log("Token Distance | Module ready");
+Hooks.on("ready", () => {
+  console.log("Token Distance | Initializing");
 
-  const distanceTexts = new Map();
-  const hoveredTokens = new Set();
+  // Create a DOM label element
+  labelDiv = document.createElement("div");
+  labelDiv.style.position = "absolute";
+  labelDiv.style.pointerEvents = "none";
+  labelDiv.style.padding = "2px 6px";
+  labelDiv.style.borderRadius = "4px";
+  labelDiv.style.background = "rgba(0, 0, 0, 0.75)";
+  labelDiv.style.color = "white";
+  labelDiv.style.fontFamily = "Signika, sans-serif";
+  labelDiv.style.fontSize = "14px";
+  labelDiv.style.border = "1px solid #999";
+  labelDiv.style.zIndex = 100;
+  labelDiv.style.display = "none";
+  document.body.appendChild(labelDiv);
 
-  function getScaledFontSize() {
-    const baseFontSize = 18;
-    const gridScale = canvas.scene?.dimensions?.size / 100 || 1;
-    const zoomLevel = Math.min(1, canvas.stage?.scale.x || 1);
-    return ((baseFontSize * gridScale) / zoomLevel) * 1.5;
-  }
-
-  function updateDistanceText(token) {
-    if (!token?.isVisible) return;
-
-    const controlled = canvas.tokens.controlled;
-    if (controlled.length !== 1 || controlled[0].id === token.id) {
-      const existing = distanceTexts.get(token.id);
-      if (existing) existing.visible = false;
-      return;
-    }
-
-    if (!hoveredTokens.has(token.id)) {
-      const existing = distanceTexts.get(token.id);
-      if (existing) existing.visible = false;
-      return;
-    }
-
-    const dist = canvas.grid.measureDistance(controlled[0].center, token.center);
-    let text = distanceTexts.get(token.id);
-
-    if (!text) {
-      text = new PIXI.Text("", {
-        fontFamily: "Arial",
-        fontWeight: "bold",
-        fill: "#FFFFFF",
-        stroke: "#000000",
-        strokeThickness: 3,
-        dropShadow: true,
-        dropShadowColor: "#000000",
-        dropShadowBlur: 4,
-        dropShadowDistance: 2,
-        align: "center"
-      });
-      text.anchor.set(0, 0.5); // Left-center anchor for right-side display
-      canvas.interface.addChild(text);
-      distanceTexts.set(token.id, text);
-    }
-
-    text.text = dist.toFixed(1);
-    text.style.fontSize = getScaledFontSize();
-
-    const bounds = token.getBounds();
-    text.position.set(bounds.x + bounds.width + 6, bounds.y + bounds.height / 2);
-    text.visible = true;
-  }
-
-  function updateAllDistances() {
-    for (const token of canvas.tokens.placeables) {
-      updateDistanceText(token);
-    }
-  }
-
+  // Handle token hover
   Hooks.on("hoverToken", (token, hovered) => {
-    if (hovered) hoveredTokens.add(token.id);
-    else hoveredTokens.delete(token.id);
-    updateAllDistances();
+    console.log(`Token Distance | hoverToken: ${token.name}, hovered: ${hovered}`);
+    const selected = canvas.tokens.controlled[0];
+    if (!hovered || !selected || token === selected) {
+      console.log("Token Distance | Hiding label: no valid hover target");
+      labelDiv.style.display = "none";
+      currentHovered = null;
+      return;
+    }
+
+    currentHovered = token;
+    updateDistanceLabel();
   });
 
-  Hooks.on("canvasReady", updateAllDistances);
-  Hooks.on("updateToken", updateAllDistances);
-  Hooks.on("controlToken", updateAllDistances);
-  Hooks.on("canvasPan", updateAllDistances);
+  // Handle token selection
+  Hooks.on("controlToken", () => {
+    if (canvas.tokens.controlled.length === 0) {
+      console.log("Token Distance | No token selected, hiding label");
+      labelDiv.style.display = "none";
+      currentHovered = null;
+    } else {
+      updateDistanceLabel();
+    }
+  });
+
+  // Recalculate on canvas pan/zoom/scene load
+  Hooks.on("canvasPan", updateDistanceLabel);
+  Hooks.on("canvasReady", updateDistanceLabel);
 });
+
+function updateDistanceLabel() {
+  if (!currentHovered || canvas.tokens.controlled.length === 0) {
+    labelDiv.style.display = "none";
+    return;
+  }
+
+  const selected = canvas.tokens.controlled[0];
+  const gridSize = canvas.scene.grid.size;
+  const gridUnit = canvas.scene.grid.distance;
+
+  const dx = Math.abs(currentHovered.center.x - selected.center.x);
+  const dy = Math.abs(currentHovered.center.y - selected.center.y);
+  const gridDx = dx / gridSize;
+  const gridDy = dy / gridSize;
+  const spaces = Math.max(gridDx, gridDy);
+
+  const snappedDist = spaces * gridUnit;
+  labelDiv.textContent = `${snappedDist.toFixed(0)} ft`;
+
+  try {
+    const world = currentHovered.center;
+    const transform = canvas.stage.worldTransform;
+    const screenX = (world.x * transform.a) + transform.tx;
+    const screenY = (world.y * transform.d) + transform.ty;
+
+    labelDiv.style.left = `${screenX - labelDiv.offsetWidth / 2}px`;
+    labelDiv.style.top = `${screenY - 40}px`;
+    labelDiv.style.display = "block";
+  } catch (err) {
+    console.warn("Token Distance | Failed to position label:", err);
+    labelDiv.style.display = "none";
+  }
+}
