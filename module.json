@@ -1,12 +1,17 @@
 {
-  "name": "token-distance",
+  "id": "token-distance",
   "title": "Token Distance",
   "description": "Shows the distance between the selected token and any token being hovered over.",
   "version": "1.3.7",
-  "minimumCoreVersion": "12",
-  "compatibleCoreVersion": "13",
-  "author": "Leland Barnard",
-  "scripts": [],
+  "authors": [
+    {
+      "name": "Leland Barnard"
+    }
+  ],
+  "compatibility": {
+    "minimum": "12",
+    "verified": "13"
+  },
   "esmodules": ["main.js"],
   "styles": [],
   "systems": [],
